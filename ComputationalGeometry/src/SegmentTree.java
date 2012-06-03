@@ -161,7 +161,8 @@ public class SegmentTree implements Runnable {
 		}
 
 		public boolean intersection(Segment seg1, Segment seg2) {
-			if (!overlaps(new Interval(seg1.y1, seg1.y2), new Interval(seg2.y1, seg2.y2)))
+			if (!overlaps( new Interval(Math.min(seg1.y1, seg1.y2), Math.max(seg1.y1, seg1.y2)),
+					new Interval(Math.min(seg2.y1, seg2.y2), Math.max(seg2.y1, seg2.y2))))
 				return false;
 			if (vectorProd(seg1.x1, seg1.y1, seg1.x2, seg1.y2, seg2.x1, seg2.y1)
 					* vectorProd(seg1.x1, seg1.y1, seg1.x2, seg1.y2, seg2.x2,
@@ -221,7 +222,7 @@ public class SegmentTree implements Runnable {
 		for (Segment seg : segments) {
 			tree.insert(tree.root, seg);
 		}
-		query = new Segment(143, 40, 143, 162);
+		query = new Segment(300, 150, 300, 230);
 		tree.query(tree.root, query, ans);
 		for (Segment seg : ans) {
 			System.err.println(seg);
