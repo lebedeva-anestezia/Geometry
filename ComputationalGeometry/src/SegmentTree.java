@@ -3,88 +3,30 @@ import java.io.FileNotFoundException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Queue;
 import java.util.Scanner;
-import java.util.Set;
 
-public class SegmentTree implements Runnable {
+public class SegmentTree {
 
-	private static List<Segment> segments = new ArrayList<SegmentTree.Segment>();
-	private static Segment query;
-	private static Set<Segment> ans = new HashSet<Segment>();
-
-	public SegmentTree(List<Segment> s, Segment q) {
-		segments = s;
-		query = q;
+	private Tree tree;
+	
+	public SegmentTree() {
 	}
-
-	public Set<Segment> getAnswer() {
-		return ans;
-	}
-
-	static class Interval {
-		int left, right;
-
-		public Interval(int left, int right) {
-			this.left = left;
-			this.right = right;
-		}
-
-		public Interval(Segment segment) {
-			this.left = segment.x1;
-			this.right = segment.x2;
-		}
-	}
-
-	public static class Segment {
-		public final int x1, y1, x2, y2;
-
-		public Segment(int x1, int y1, int x2, int y2) {
-			if (x1 > x2) {
-				this.x1 = x2;
-				this.y1 = y2;
-				this.x2 = x1;
-				this.y2 = y1;
-			} else {
-				this.x1 = x1;
-				this.y1 = y1;
-				this.x2 = x2;
-				this.y2 = y2;
-			}
-		}
-
-		@Override
-		public String toString() {
-			return Integer.valueOf(x1).toString() + " "
-					+ Integer.valueOf(y1).toString() + " "
-					+ Integer.valueOf(x2).toString() + " "
-					+ Integer.valueOf(y2).toString();
-		}
-	}
-
-	static void reading(List<Segment> segments, String fileName) {
-		try {
-			Scanner sc = new Scanner(new File(fileName));
-			while (sc.hasNext()) {
-				segments.add(new Segment(sc.nextInt(), sc.nextInt(), sc
-						.nextInt(), sc.nextInt()));
-			}
-			sc.close();
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		}
+	
+	public SegmentTree(List<Segment> s) {
+		tree = build(s);
 	}
 
 	static class Node {
 		Node leftChild, rightChilrden;
 		Interval interval;
-		List<Segment> canonicalSubset;
+		CanonicalTree canonicalSubset;
 
 		public Node(Interval interval) {
 			this.interval = interval;
-			this.canonicalSubset = new ArrayList<Segment>();
+			this.canonicalSubset = new CanonicalTree(interval.left,
+					interval.right);
 		}
 
 		public Node(Node left, Node right) {
@@ -92,11 +34,12 @@ public class SegmentTree implements Runnable {
 					right.interval.right);
 			this.leftChild = left;
 			this.rightChilrden = right;
-			this.canonicalSubset = new ArrayList<Segment>();
+			this.canonicalSubset = new CanonicalTree(interval.left,
+					interval.right);
 		}
 
 		public void walk() {
-			System.out.println(this + " segment " + this.canonicalSubset);
+			this.canonicalSubset.build();
 			if (leftChild != null)
 				leftChild.walk();
 			if (rightChilrden != null)
@@ -109,7 +52,7 @@ public class SegmentTree implements Runnable {
 		}
 	}
 
-	static class Tree {
+	private static class Tree {
 		Node root;
 
 		public Tree(List<Node> leaves) {
@@ -128,15 +71,6 @@ public class SegmentTree implements Runnable {
 			root = queue.poll();
 		}
 
-		private boolean overlaps(Interval int1, Interval int2) {
-			if ((int1.left <= int2.left) && (int1.right >= int2.left))
-				return true;
-			if ((int1.left <= int2.right) && (int1.right >= int2.right))
-				return true;
-			if ((int2.left <= int1.left) && (int2.right >= int1.left))
-				return true;
-			return false;
-		}
 
 		public void insert(Node node, Segment segment) {
 			if (node.interval.left >= segment.x1
@@ -145,44 +79,19 @@ public class SegmentTree implements Runnable {
 				return;
 			}
 			if (node.leftChild != null
-					&& overlaps(node.leftChild.interval, new Interval(segment))) {
+					&& Util.overlaps(node.leftChild.interval, new Interval(segment))) {
 				insert(node.leftChild, segment);
 			}
 			if (node.rightChilrden != null
-					&& overlaps(node.rightChilrden.interval, new Interval(
+					&& Util.overlaps(node.rightChilrden.interval, new Interval(
 							segment))) {
 				insert(node.rightChilrden, segment);
 			}
 		}
 
-		public long vectorProd(long x1, long y1, long x2, long y2, long x3,
-				long y3) {
-			return (x2 - x1) * (y3 - y1) - (x3 - x1) * (y2 - y1);
-		}
 
-		public boolean intersection(Segment seg1, Segment seg2) {
-			if (!overlaps( new Interval(Math.min(seg1.y1, seg1.y2), Math.max(seg1.y1, seg1.y2)),
-					new Interval(Math.min(seg2.y1, seg2.y2), Math.max(seg2.y1, seg2.y2))))
-				return false;
-			if (vectorProd(seg1.x1, seg1.y1, seg1.x2, seg1.y2, seg2.x1, seg2.y1)
-					* vectorProd(seg1.x1, seg1.y1, seg1.x2, seg1.y2, seg2.x2,
-							seg2.y2) > 0) {
-				return false;
-			}
-			if (vectorProd(seg2.x1, seg2.y1, seg2.x2, seg2.y2, seg1.x1, seg1.y1)
-					* vectorProd(seg2.x1, seg2.y1, seg2.x2, seg2.y2, seg1.x2,
-							seg1.y2) > 0) {
-				return false;
-			}
-			return true;
-		}
-
-		public void query(Node node, Segment q, Set<Segment> segments) {
-			for (Segment seg : node.canonicalSubset) {
-				if (intersection(seg, q)) {
-					segments.add(seg);
-				}
-			}
+		public void query(Node node, Segment q, List<Segment> segments) {
+			node.canonicalSubset.query(q, segments);
 			if (node.leftChild != null) {
 				if (q.x1 <= node.leftChild.interval.right) {
 					query(node.leftChild, q, segments);
@@ -194,71 +103,62 @@ public class SegmentTree implements Runnable {
 				}
 			}
 		}
+	}
 
+	public List<Segment> query(Segment q) {
+		List<Segment> answer = new ArrayList<Segment>();
+		tree.query(tree.root, q, answer);
+		return answer;
+	}
+
+	private Tree build(List<Segment> segments) {
+		List<Node> leaves = new ArrayList<Node>();
+		List<Integer> endpoints = new ArrayList<Integer>();
+		for (Segment seg : segments) {
+			endpoints.add(seg.x1);
+			endpoints.add(seg.x2);
+		}
+		int[] points = new int[endpoints.size()];
+		for (int i = 0; i < endpoints.size(); i++) {
+			points[i] = endpoints.get(i);
+		}
+		Arrays.sort(points);
+		leaves.add(new Node(new Interval(Integer.MIN_VALUE, points[0])));
+		leaves.add(new Node(new Interval(points[0], points[0])));
+		for (int i = 1; i < points.length; i++) {
+			leaves.add(new Node(new Interval(points[i - 1], points[i])));
+			leaves.add(new Node(new Interval(points[i], points[i])));
+		}
+		leaves.add(new Node(new Interval(points[points.length - 1],
+				Integer.MAX_VALUE)));
+		Tree tree = new Tree(leaves);
+		for (Segment seg : segments) {
+			tree.insert(tree.root, seg);
+		}
+		tree.root.walk();
+		return tree;
+	}
+
+	static SegmentTree read(String fileName) {
+		try {
+			Scanner sc = new Scanner(new File(fileName));
+			List<Segment> segments = new ArrayList<Segment>();
+			while (sc.hasNext()) {
+				segments.add(new Segment(sc.nextInt(), sc.nextInt(), sc
+						.nextInt(), sc.nextInt()));
+			}
+			sc.close();
+			return new SegmentTree(segments);
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		}
+		return null;
 	}
 
 	public static void main(String[] args) {
-		reading(segments, "input.txt");
-		List<Node> leaves = new ArrayList<Node>();
-		List<Integer> endpoints = new ArrayList<Integer>();
-		for (Segment seg : segments) {
-			endpoints.add(seg.x1);
-			endpoints.add(seg.x2);
-		}
-		int[] points = new int[endpoints.size()];
-		for (int i = 0; i < endpoints.size(); i++) {
-			points[i] = endpoints.get(i);
-		}
-		Arrays.sort(points);
-		leaves.add(new Node(new Interval(Integer.MIN_VALUE, points[0])));
-		leaves.add(new Node(new Interval(points[0], points[0])));
-		for (int i = 1; i < points.length; i++) {
-			leaves.add(new Node(new Interval(points[i - 1], points[i])));
-			leaves.add(new Node(new Interval(points[i], points[i])));
-		}
-		leaves.add(new Node(new Interval(points[points.length - 1],
-				Integer.MAX_VALUE)));
-		Tree tree = new Tree(leaves);
-		for (Segment seg : segments) {
-			tree.insert(tree.root, seg);
-		}
-		query = new Segment(300, 150, 300, 230);
-		tree.query(tree.root, query, ans);
-		for (Segment seg : ans) {
-			System.err.println(seg);
-		}
-	}
-
-	@Override
-	public void run() {
-		// List<Segment> segments = new ArrayList<Segment>();
-		// reading(segments, "input.txt");
-		List<Node> leaves = new ArrayList<Node>();
-		List<Integer> endpoints = new ArrayList<Integer>();
-		for (Segment seg : segments) {
-			endpoints.add(seg.x1);
-			endpoints.add(seg.x2);
-		}
-		int[] points = new int[endpoints.size()];
-		for (int i = 0; i < endpoints.size(); i++) {
-			points[i] = endpoints.get(i);
-		}
-		Arrays.sort(points);
-		leaves.add(new Node(new Interval(Integer.MIN_VALUE, points[0])));
-		leaves.add(new Node(new Interval(points[0], points[0])));
-		for (int i = 1; i < points.length; i++) {
-			leaves.add(new Node(new Interval(points[i - 1], points[i])));
-			leaves.add(new Node(new Interval(points[i], points[i])));
-		}
-		leaves.add(new Node(new Interval(points[points.length - 1],
-				Integer.MAX_VALUE)));
-		Tree tree = new Tree(leaves);
-		for (Segment seg : segments) {
-			tree.insert(tree.root, seg);
-		}
-		// Segment query = new Segment(1, 2, 1, 6); // initialize!
-		// Set<Segment> ans = new HashSet<Segment>();
-		tree.query(tree.root, query, ans);
+		SegmentTree segmentTree = read("input.txt");
+		Segment query = new Segment(186, 107, 186, 185);
+		List<Segment> ans = segmentTree.query(query);
 		for (Segment seg : ans) {
 			System.err.println(seg);
 		}
