@@ -2,7 +2,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Queue;
 import java.util.Scanner;
@@ -38,14 +38,6 @@ public class SegmentTree {
 					interval.right);
 		}
 
-		public void walk() {
-			this.canonicalSubset.build();
-			if (leftChild != null)
-				leftChild.walk();
-			if (rightChilrden != null)
-				rightChilrden.walk();
-		}
-
 		@Override
 		public String toString() {
 			return interval.left + " " + interval.right;
@@ -70,23 +62,33 @@ public class SegmentTree {
 			}
 			root = queue.poll();
 		}
-
-
-		public void insert(Node node, Segment segment) {
-			if (node.interval.left >= segment.x1
-					&& node.interval.right <= segment.x2) {
-				node.canonicalSubset.add(segment);
+		
+		public void insertAll(Node node, List<Segment> segs) {
+			if (segs.isEmpty())
 				return;
+			List<Segment> left = new ArrayList<Segment>();
+			List<Segment> right = new ArrayList<Segment>();
+			boolean added = false;
+			for (Segment seg : segs) {
+				added = false;
+				if (node.interval.left >= seg.x1
+						&& node.interval.right <= seg.x2) {
+					node.canonicalSubset.add(seg);
+					added = true;
+				}
+				if (!added && node.leftChild != null
+						&& Util.overlaps(node.leftChild.interval, new Interval(seg))) {
+					left.add(seg);
+				}
+				if (!added && node.rightChilrden != null
+						&& Util.overlaps(node.rightChilrden.interval, new Interval(
+								seg))) {
+					right.add(seg);
+				}
 			}
-			if (node.leftChild != null
-					&& Util.overlaps(node.leftChild.interval, new Interval(segment))) {
-				insert(node.leftChild, segment);
-			}
-			if (node.rightChilrden != null
-					&& Util.overlaps(node.rightChilrden.interval, new Interval(
-							segment))) {
-				insert(node.rightChilrden, segment);
-			}
+			node.canonicalSubset.build();
+			insertAll(node.leftChild, left);
+			insertAll(node.rightChilrden, right);
 		}
 
 
@@ -113,29 +115,24 @@ public class SegmentTree {
 
 	private Tree build(List<Segment> segments) {
 		List<Node> leaves = new ArrayList<Node>();
-		List<Integer> endpoints = new ArrayList<Integer>();
+		List<Endpoint> endpoints = new ArrayList<Endpoint>();
 		for (Segment seg : segments) {
-			endpoints.add(seg.x1);
-			endpoints.add(seg.x2);
+			endpoints.add(new Endpoint(seg, true));
+			endpoints.add(new Endpoint(seg, false));
 		}
-		int[] points = new int[endpoints.size()];
-		for (int i = 0; i < endpoints.size(); i++) {
-			points[i] = endpoints.get(i);
+		Collections.sort(endpoints);
+		Graph graph = new Graph();
+		List<Segment> order = graph.buildGraph(endpoints);
+		leaves.add(new Node(new Interval(Integer.MIN_VALUE, endpoints.get(0).x)));
+		leaves.add(new Node(new Interval(endpoints.get(0).x, endpoints.get(0).x)));
+		for (int i = 1; i < endpoints.size(); i++) {
+			leaves.add(new Node(new Interval(endpoints.get(i - 1).x, endpoints.get(i).x)));
+			leaves.add(new Node(new Interval(endpoints.get(i).x, endpoints.get(i).x)));
 		}
-		Arrays.sort(points);
-		leaves.add(new Node(new Interval(Integer.MIN_VALUE, points[0])));
-		leaves.add(new Node(new Interval(points[0], points[0])));
-		for (int i = 1; i < points.length; i++) {
-			leaves.add(new Node(new Interval(points[i - 1], points[i])));
-			leaves.add(new Node(new Interval(points[i], points[i])));
-		}
-		leaves.add(new Node(new Interval(points[points.length - 1],
+		leaves.add(new Node(new Interval(endpoints.get(endpoints.size() - 1).x,
 				Integer.MAX_VALUE)));
 		Tree tree = new Tree(leaves);
-		for (Segment seg : segments) {
-			tree.insert(tree.root, seg);
-		}
-		tree.root.walk();
+		tree.insertAll(tree.root, order);
 		return tree;
 	}
 
@@ -157,7 +154,7 @@ public class SegmentTree {
 
 	public static void main(String[] args) {
 		SegmentTree segmentTree = read("input.txt");
-		Segment query = new Segment(186, 107, 186, 185);
+		Segment query = new Segment(200, 80, 200, 140);
 		List<Segment> ans = segmentTree.query(query);
 		for (Segment seg : ans) {
 			System.err.println(seg);

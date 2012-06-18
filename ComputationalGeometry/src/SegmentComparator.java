@@ -1,11 +1,16 @@
 import java.util.Comparator;
 
-
 public class SegmentComparator implements Comparator<Segment> {
 	private int vertical;
+	private boolean isQuery;
+
+	public SegmentComparator() {
+		isQuery = false;
+	}
 
 	public SegmentComparator(int vertical) {
 		this.vertical = vertical;
+		isQuery = true;
 	}
 
 	@Override
@@ -28,6 +33,14 @@ public class SegmentComparator implements Comparator<Segment> {
 		}
 		if (b1 == 0)
 			return Integer.valueOf(o1.y1).compareTo(o2.y1);
+		if (!isQuery) {
+			vertical = 0;
+			if (o1.x1 >= o2.x1) {
+				vertical = o1.x1;
+			} else {
+				vertical = o2.x1;
+			}
+		}
 		long y1 = -(a1 * vertical + c1) * b2;
 		long y2 = -(a2 * vertical + c2) * b1;
 		return Long.valueOf(y1).compareTo(y2);
