@@ -10,4 +10,8 @@ public class Interval {
 		this.left = segment.x1;
 		this.right = segment.x2;
 	}
+	
+	public boolean isPoint() {
+		return left == right;
+	}
 }

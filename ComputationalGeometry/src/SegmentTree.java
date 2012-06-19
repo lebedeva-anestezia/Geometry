@@ -1,25 +1,31 @@
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Queue;
 import java.util.Scanner;
+import java.util.Set;
+import java.util.StringTokenizer;
 
 public class SegmentTree {
 
 	private Tree tree;
-	
+
 	public SegmentTree() {
 	}
-	
+
 	public SegmentTree(List<Segment> s) {
 		tree = build(s);
 	}
 
 	static class Node {
-		Node leftChild, rightChilrden;
+		Node leftChild, rightChild;
 		Interval interval;
 		CanonicalTree canonicalSubset;
 
@@ -33,9 +39,13 @@ public class SegmentTree {
 			this.interval = new Interval(left.interval.left,
 					right.interval.right);
 			this.leftChild = left;
-			this.rightChilrden = right;
+			this.rightChild = right;
 			this.canonicalSubset = new CanonicalTree(interval.left,
 					interval.right);
+		}
+
+		public boolean isLeaf() {
+			return leftChild == null && rightChild == null;
 		}
 
 		@Override
@@ -62,7 +72,7 @@ public class SegmentTree {
 			}
 			root = queue.poll();
 		}
-		
+
 		public void insertAll(Node node, List<Segment> segs) {
 			if (segs.isEmpty())
 				return;
@@ -76,33 +86,35 @@ public class SegmentTree {
 					node.canonicalSubset.add(seg);
 					added = true;
 				}
-				if (!added && node.leftChild != null
-						&& Util.overlaps(node.leftChild.interval, new Interval(seg))) {
+				if (!added
+						&& node.leftChild != null
+						&& Util.overlaps(node.leftChild.interval, new Interval(
+								seg))) {
 					left.add(seg);
 				}
-				if (!added && node.rightChilrden != null
-						&& Util.overlaps(node.rightChilrden.interval, new Interval(
-								seg))) {
+				if (!added
+						&& node.rightChild != null
+						&& Util.overlaps(node.rightChild.interval,
+								new Interval(seg))) {
 					right.add(seg);
 				}
 			}
 			node.canonicalSubset.build();
 			insertAll(node.leftChild, left);
-			insertAll(node.rightChilrden, right);
+			insertAll(node.rightChild, right);
 		}
 
-
 		public void query(Node node, Segment q, List<Segment> segments) {
+			if (node.isLeaf() && !node.interval.isPoint() && (q.x1 == node.interval.left || q.x1 == node.interval.right))
+				return;
 			node.canonicalSubset.query(q, segments);
-			if (node.leftChild != null) {
-				if (q.x1 <= node.leftChild.interval.right) {
-					query(node.leftChild, q, segments);
-				}
+			if (node.isLeaf())
+				return;
+			if (q.x1 <= node.leftChild.interval.right) {
+				query(node.leftChild, q, segments);
 			}
-			if (node.rightChilrden != null) {
-				if (q.x1 >= node.rightChilrden.interval.left) {
-					query(node.rightChilrden, q, segments);
-				}
+			if (q.x1 >= node.rightChild.interval.left) {
+				query(node.rightChild, q, segments);
 			}
 		}
 	}
@@ -116,36 +128,57 @@ public class SegmentTree {
 	private Tree build(List<Segment> segments) {
 		List<Node> leaves = new ArrayList<Node>();
 		List<Endpoint> endpoints = new ArrayList<Endpoint>();
+		Set<Integer> setOfEndpoints = new HashSet<Integer>();
 		for (Segment seg : segments) {
 			endpoints.add(new Endpoint(seg, true));
 			endpoints.add(new Endpoint(seg, false));
+			setOfEndpoints.add(seg.x1);
+			setOfEndpoints.add(seg.x2);
 		}
+		int[] ends = new int[setOfEndpoints.size()];
+		int ind = 0;
+		for (Integer point : setOfEndpoints) {
+			ends[ind] = point;
+			ind++;
+		}
+		Arrays.sort(ends);
 		Collections.sort(endpoints);
 		Graph graph = new Graph();
 		List<Segment> order = graph.buildGraph(endpoints);
-		leaves.add(new Node(new Interval(Integer.MIN_VALUE, endpoints.get(0).x)));
-		leaves.add(new Node(new Interval(endpoints.get(0).x, endpoints.get(0).x)));
-		for (int i = 1; i < endpoints.size(); i++) {
-			leaves.add(new Node(new Interval(endpoints.get(i - 1).x, endpoints.get(i).x)));
-			leaves.add(new Node(new Interval(endpoints.get(i).x, endpoints.get(i).x)));
+		leaves.add(new Node(new Interval(Integer.MIN_VALUE, ends[0])));
+		leaves.add(new Node(new Interval(ends[0], ends[0])));
+		for (int i = 1; i < ends.length; i++) {
+			leaves.add(new Node(new Interval(ends[i - 1], ends[i])));
+			leaves.add(new Node(new Interval(ends[i], ends[i])));
 		}
-		leaves.add(new Node(new Interval(endpoints.get(endpoints.size() - 1).x,
-				Integer.MAX_VALUE)));
+		leaves.add(new Node(new Interval(ends[ends.length - 1], Integer.MAX_VALUE)));
 		Tree tree = new Tree(leaves);
 		tree.insertAll(tree.root, order);
 		return tree;
 	}
 
-	static SegmentTree read(String fileName) {
+	static Wrapper read(String fileName) {
 		try {
 			Scanner sc = new Scanner(new File(fileName));
 			List<Segment> segments = new ArrayList<Segment>();
+			List<Segment> queries = new ArrayList<Segment>();
+			int n = 0;
 			while (sc.hasNext()) {
-				segments.add(new Segment(sc.nextInt(), sc.nextInt(), sc
+				String s = sc.nextLine();
+				if (s.equals(""))
+					break;
+				StringTokenizer t = new StringTokenizer(s);
+				segments.add(new Segment(Integer.valueOf(t.nextToken()),
+						Integer.valueOf(t.nextToken()), Integer.valueOf(t
+								.nextToken()), Integer.valueOf(t.nextToken()),
+						++n));
+			}
+			while (sc.hasNext()) {
+				queries.add(new Segment(sc.nextInt(), sc.nextInt(), sc
 						.nextInt(), sc.nextInt()));
 			}
 			sc.close();
-			return new SegmentTree(segments);
+			return new Wrapper(new SegmentTree(segments), queries);
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
 		}
@@ -153,11 +186,22 @@ public class SegmentTree {
 	}
 
 	public static void main(String[] args) {
-		SegmentTree segmentTree = read("input.txt");
-		Segment query = new Segment(200, 80, 200, 140);
-		List<Segment> ans = segmentTree.query(query);
-		for (Segment seg : ans) {
-			System.err.println(seg);
+		Wrapper wrap = read("input.txt");
+		SegmentTree segmentTree = wrap.getSegmentTree();
+		List<Segment> queries = wrap.getQueries();
+		try {
+			FileWriter out = new FileWriter(new File("output.txt"));
+			for (Segment query : queries) {
+				List<Segment> ans = segmentTree.query(query);
+				Collections.sort(ans);
+				for (Segment seg : ans) {
+					out.write(seg.getNumber() + " ");
+				}
+				out.write('\n');
+			}
+			out.close();
+		} catch (IOException e) {
+			e.printStackTrace();
 		}
 	}
 }
