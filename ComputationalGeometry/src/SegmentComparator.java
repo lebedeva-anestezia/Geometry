@@ -18,28 +18,26 @@ public class SegmentComparator implements Comparator<Segment> {
 	public int compare(Segment o1, Segment o2) {
 		long a1 = (long)o1.y2 - o1.y1;
 		long b1 = (long)o1.x1 - o1.x2;
-		long c1 = -a1 * o1.x1 - b1 * o1.y1;
 		if (b1 == 0)
 			return Integer.valueOf(o1.y1).compareTo(o2.y1);
-		if (b1 < 0) {
-			a1 *= -1;
-			b1 *= -1;
-			c1 *= -1;
-		}
 		BigInteger bigA1 = BigInteger.valueOf(a1);
 		BigInteger bigB1 = BigInteger.valueOf(b1);
-		BigInteger bigC1 = BigInteger.valueOf(c1);
+		BigInteger bigC1 = BigInteger.valueOf(-a1 * o1.x1).add(BigInteger.valueOf(-b1 * o1.y1));
+		if (b1 < 0) {
+			bigA1 = bigA1.negate();
+			bigB1 = bigB1.negate();
+			bigC1 = bigC1.negate();
+		}
 		long a2 = (long)o2.y2 - o2.y1;
 		long b2 = (long)o2.x1 - o2.x2;
-		long c2 = -a2 * o2.x1 - b2 * o2.y1;
-		if (b2 < 0) {
-			a2 *= -1;
-			b2 *= -1;
-			c2 *= -1;
-		}
 		BigInteger bigA2 = BigInteger.valueOf(a2);
 		BigInteger bigB2 = BigInteger.valueOf(b2);
-		BigInteger bigC2 = BigInteger.valueOf(c2);
+		BigInteger bigC2 = BigInteger.valueOf(-a2 * o2.x1).add(BigInteger.valueOf(-b2 * o2.y1));
+		if (b2 < 0) {
+			bigA2 = bigA2.negate();
+			bigB2 = bigB2.negate();
+			bigC2 = bigC2.negate();
+		}
 		if (!isQuery) {
 			vertical = 0;
 			if (o1.x1 >= o2.x1) {
